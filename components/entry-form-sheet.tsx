@@ -194,8 +194,9 @@ export function EntryFormSheet({
 
         <button
           type="button"
+          disabled={total === 0}
           onClick={() => onSave({ pet, glass })}
-          className="mt-4 flex h-14 w-full items-center justify-center rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:translate-y-px active:scale-[0.99]"
+          className="mt-4 flex h-14 w-full items-center justify-center rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:translate-y-px active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isEdit ? 'Módosítások mentése' : 'Bejegyzés mentése'}
         </button>

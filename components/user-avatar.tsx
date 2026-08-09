@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import type { User } from '@/lib/data'
 
@@ -12,6 +13,12 @@ const SIZE_MAP = {
   sm: 'size-9 text-sm',
   md: 'size-11 text-base',
   lg: 'size-24 text-3xl',
+} as const
+
+const IMAGE_SIZE_MAP = {
+  sm: 36,
+  md: 44,
+  lg: 96,
 } as const
 
 function initials(name: string): string {
@@ -40,8 +47,11 @@ export function UserAvatar({
 
   if (user.photoUrl && !imageFailed) {
     return (
-      <img
+      <Image
         src={user.photoUrl}
+        width={IMAGE_SIZE_MAP[size]}
+        height={IMAGE_SIZE_MAP[size]}
+        sizes={`${IMAGE_SIZE_MAP[size]}px`}
         referrerPolicy="no-referrer"
         onError={() => setImageFailed(true)}
         alt={`${user.name} profilképe`}

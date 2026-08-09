@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Returnly — Palackvisszavitel-követő',
+    name: 'Returnly',
     short_name: 'Returnly',
     description:
       'Palackgyűjtés és visszavitel követése egyszerűen, a csapatoddal együtt.',
@@ -12,15 +12,15 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#009f6b',
     icons: [
       {
-        src: '/returnly-icon-192.png',
+        src: '/returnly-wine-icon-192.png',
         sizes: '192x192',
         type: 'image/png',
       },
       {
-        src: '/returnly-icon-512.png',
+        src: '/returnly-wine-icon-512.png',
         sizes: '512x512',
         type: 'image/png',
-        purpose: 'any maskable',
+        purpose: 'maskable',
       },
     ],
   }

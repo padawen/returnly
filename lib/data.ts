@@ -21,50 +21,14 @@ export type Entry = {
   returnEventId?: string | null
 }
 
-export const CATEGORY_META = {
-  pet: {
-    key: 'pet' as const,
-    label: 'PET / ALU',
-    short: 'PET / ALU',
-    className: 'pet',
-  },
-  glass: {
-    key: 'glass' as const,
-    label: 'Törhető üveg',
-    short: 'Üveg',
-    className: 'glass',
-  },
-}
-
 export const CURRENT_USER: User = {
   id: 'u_david',
   name: 'Herczeg Dávid',
   firstName: 'Dávid',
   email: 'daveherczeg@gmail.com',
   color: 'pet',
-  photoUrl: '/avatar-david.png',
   isAdmin: true,
 }
-
-export const TEAM: User[] = [
-  CURRENT_USER,
-  {
-    id: 'u_bence',
-    name: 'Nagy Bence',
-    firstName: 'Bence',
-    email: 'bence.nagy@gmail.com',
-    color: 'glass',
-    isAdmin: false,
-  },
-  {
-    id: 'u_anna',
-    name: 'Tóth Anna',
-    firstName: 'Anna',
-    email: 'anna.toth@gmail.com',
-    color: 'neutral',
-    isAdmin: false,
-  },
-]
 
 function todayAt(hours: number, minutes: number): string {
   const d = new Date()
@@ -90,10 +54,6 @@ export const INITIAL_ENTRIES: Entry[] = [
     returnEventId: null,
   },
 ]
-
-export function getUser(id: string): User {
-  return TEAM.find((u) => u.id === id) ?? CURRENT_USER
-}
 
 export function entryTotal(entry: Pick<Entry, 'pet' | 'glass'>): number {
   return entry.pet + entry.glass

@@ -17,6 +17,7 @@ import {
   type Entry,
   type User,
 } from '@/lib/data'
+import { publicErrorMessage } from '@/lib/errors'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 
 type EntryInput = { pet: number; glass: number }
@@ -30,6 +31,7 @@ type ProfileRow = {
   display_name: string
   nickname: string
   theme: Theme
+  avatar_url: string | null
 }
 
 type RoleRow = {
@@ -104,19 +106,6 @@ function avatarUrl(user: SupabaseUser | null) {
   )
 }
 
-function toError(error: unknown, fallback: string) {
-  if (error instanceof Error) return error
-
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    const message = (error as { message?: unknown }).message
-    if (typeof message === 'string' && message.trim()) {
-      return new Error(message)
-    }
-  }
-
-  return new Error(fallback)
-}
-
 export function StoreProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => createClient(), [])
   const [authUser, setAuthUser] = useState<SupabaseUser | null>(null)
@@ -139,7 +128,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const [profilesResult, rolesResult, entriesResult] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id,email,display_name,nickname,theme')
+          .select('id,email,display_name,nickname,theme,avatar_url')
           .order('display_name'),
         supabase.from('user_roles').select('user_id,is_admin'),
         supabase
@@ -153,7 +142,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const queryError =
         profilesResult.error ?? rolesResult.error ?? entriesResult.error
       if (queryError) {
-        setError(queryError.message)
+        setError(publicErrorMessage(queryError, 'Az adatok betöltése nem sikerült.'))
         setIsLoading(false)
         return
       }
@@ -391,12 +380,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const { data, error: returnError } = await supabase.rpc(
       'mark_all_returned',
     )
-    if (returnError) {
-      throw toError(
-        returnError,
-        'A visszavitel rögzítése nem sikerült.',
-      )
-    }
+    if (returnError) throw returnError
 
     const result = (Array.isArray(data) ? data[0] : data) as {
       id: string
@@ -459,10 +443,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           email: profile.email,
           color: index % 3 === 0 ? 'pet' : index % 3 === 1 ? 'glass' : 'neutral',
           isAdmin: roleById.get(profile.id) ?? false,
-          photoUrl:
-            profile.id === authUser?.id
-              ? authAvatarUrl
-              : undefined,
+          photoUrl: profile.avatar_url ?? undefined,
         }
       })
       .sort((a, b) => {
@@ -481,7 +462,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         firstName: firstName(localNickname || fallbackName, authUser?.email ?? CURRENT_USER.email),
         email: authUser?.email ?? CURRENT_USER.email,
         isAdmin: mockLoggedIn || false,
-        photoUrl: authAvatarUrl ?? CURRENT_USER.photoUrl,
+        photoUrl: authAvatarUrl,
       }
 
     if (localNickname.trim() && currentProfile?.id === currentUser.id) {

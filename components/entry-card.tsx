@@ -63,14 +63,6 @@ export function EntryCard({
       <div
         className={`mt-4 grid gap-2 ${onDelete ? 'grid-cols-2' : 'grid-cols-1'}`}
       >
-        <button
-          type="button"
-          onClick={() => onEdit(entry)}
-          className="flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-secondary text-sm font-semibold text-secondary-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:translate-y-px"
-        >
-          <Pencil className="size-4" />
-          Szerkesztés
-        </button>
         {onDelete && (
           <button
             type="button"
@@ -81,6 +73,14 @@ export function EntryCard({
             Törlés
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => onEdit(entry)}
+          className="flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-secondary text-sm font-semibold text-secondary-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:translate-y-px"
+        >
+          <Pencil className="size-4" />
+          Szerkesztés
+        </button>
       </div>
     </li>
   )

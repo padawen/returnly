@@ -14,24 +14,24 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Returnly — Palackvisszavitel-követő',
+  title: 'Returnly- SK',
   description:
     'Palackgyűjtés és visszavitel követése egyszerűen, a csapatoddal együtt.',
   generator: 'v0.app',
   icons: {
     icon: [
       {
-        url: '/returnly-icon-192.png',
+        url: '/returnly-wine-icon-192.png',
         type: 'image/png',
         sizes: '192x192',
       },
       {
-        url: '/returnly-logo.png',
+        url: '/returnly-wine-logo.png',
         type: 'image/png',
         sizes: '1254x1254',
       },
     ],
-    apple: '/returnly-icon-180.png',
+    apple: '/returnly-wine-icon-180.png',
   },
 }
 

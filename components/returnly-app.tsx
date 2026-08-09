@@ -22,7 +22,6 @@ export function ReturnlyApp() {
 function AppInner() {
   const {
     addEntry,
-    currentUser,
     isAuthenticated,
     isLoading,
     markAllReturned,
@@ -64,6 +63,8 @@ function AppInner() {
   }
 
   const handleSave = async (input: { pet: number; glass: number }) => {
+    if (entryTotal(input) === 0) return
+
     const isEdit = sheet?.mode === 'edit'
     if (isEdit) {
       await updateEntry(sheet.entry.id, input)
@@ -109,6 +110,10 @@ function AppInner() {
           onLogout={signOut}
           onMarkReturned={handleReturnAll}
           onHome={() => setTab('home')}
+          darkMode={darkMode}
+          onToggleDarkMode={() => {
+            void setTheme(darkMode ? 'light' : 'dark')
+          }}
         />
       )}
 

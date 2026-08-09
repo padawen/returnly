@@ -15,16 +15,21 @@ import {
 import { formatNumber } from '@/lib/data'
 import { useStore } from '@/components/store'
 import { UserAvatar } from '@/components/user-avatar'
-import { BrandMark } from '@/components/brand-mark'
+import { AppHeader } from '@/components/app-header'
+import { publicErrorMessage } from '@/lib/errors'
 
 export function ProfileScreen({
   onLogout,
   onMarkReturned,
   onHome,
+  darkMode,
+  onToggleDarkMode,
 }: {
   onLogout: () => Promise<void>
   onMarkReturned: () => Promise<void>
   onHome: () => void
+  darkMode: boolean
+  onToggleDarkMode: () => void
 }) {
   const {
     allTotals,
@@ -39,10 +44,12 @@ export function ProfileScreen({
   } = useStore()
   const [draft, setDraft] = useState(nickname)
   const [justSaved, setJustSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [returning, setReturning] = useState(false)
   const [confirmReturnOpen, setConfirmReturnOpen] = useState(false)
   const [returnError, setReturnError] = useState<string | null>(null)
+  const [adminError, setAdminError] = useState<string | null>(null)
   const [promotingId, setPromotingId] = useState<string | null>(null)
 
   const myEntries = entries.filter((entry) => entry.userId === currentUser.id)
@@ -51,10 +58,13 @@ export function ProfileScreen({
 
   const handleSave = async () => {
     setSaving(true)
+    setSaveError(null)
     try {
       await setNickname(draft)
       setJustSaved(true)
       window.setTimeout(() => setJustSaved(false), 1600)
+    } catch (error) {
+      setSaveError(publicErrorMessage(error, 'A becenév mentése nem sikerült.'))
     } finally {
       setSaving(false)
     }
@@ -74,20 +84,9 @@ export function ProfileScreen({
       await onMarkReturned()
       setConfirmReturnOpen(false)
     } catch (error) {
-      const rawMessage =
-        error instanceof Error
-          ? error.message
-          : typeof error === 'object' && error !== null && 'message' in error
-            ? String((error as { message?: unknown }).message ?? '')
-            : ''
-
-      const message =
-        rawMessage === 'not_admin'
-          ? 'Ezt a műveletet csak admin végezheti el.'
-          : rawMessage === 'nothing_to_return'
-            ? 'Nincs visszavitelre váró készlet.'
-            : rawMessage || 'A visszavitel rögzítése nem sikerült.'
-      setReturnError(message)
+      setReturnError(
+        publicErrorMessage(error, 'A visszavitel rögzítése nem sikerült.'),
+      )
     } finally {
       setReturning(false)
     }
@@ -95,8 +94,11 @@ export function ProfileScreen({
 
   const handleGrantAdmin = async (userId: string) => {
     setPromotingId(userId)
+    setAdminError(null)
     try {
       await grantAdmin(userId)
+    } catch (error) {
+      setAdminError(publicErrorMessage(error, 'Az adminjog megadása nem sikerült.'))
     } finally {
       setPromotingId(null)
     }
@@ -104,17 +106,16 @@ export function ProfileScreen({
 
   return (
     <div className="mx-auto w-full max-w-2xl px-5 pb-32 pt-10">
-      <button
-        type="button"
-        onClick={onHome}
-        aria-label="Vissza a kezdőlapra"
-        className="mb-8 block rounded-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-95"
-      >
-        <BrandMark iconOnly />
-      </button>
+      <div className="mb-8">
+        <AppHeader
+          currentUser={currentUser}
+          darkMode={darkMode}
+          onHome={onHome}
+          onToggleDarkMode={onToggleDarkMode}
+        />
+      </div>
       <header className="flex flex-col items-center text-center">
-        <UserAvatar user={currentUser} size="lg" />
-        <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           {currentUser.name}
         </h1>
         <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -154,6 +155,11 @@ export function ProfileScreen({
             {justSaved ? 'Mentve' : saving ? 'Mentés…' : 'Mentés'}
           </button>
         </div>
+        {saveError && (
+          <p role="alert" className="mt-3 text-sm font-medium text-destructive">
+            {saveError}
+          </p>
+        )}
       </section>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
@@ -194,6 +200,14 @@ export function ProfileScreen({
           <Users className="size-4 text-muted-foreground" />
           <h2 className="text-lg font-semibold text-foreground">Csapat</h2>
         </div>
+        {adminError && (
+          <p
+            role="alert"
+            className="mb-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive"
+          >
+            {adminError}
+          </p>
+        )}
         <ul className="overflow-hidden rounded-2xl border border-border bg-card">
           {team.map((member, index) => (
             <li
@@ -251,7 +265,7 @@ export function ProfileScreen({
       </button>
 
       {confirmReturnOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 sm:items-center sm:pb-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button
             type="button"
             aria-label="Bezárás"

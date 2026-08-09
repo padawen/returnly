@@ -7,12 +7,12 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 
 # Environment variables
-.env*.local
+.env
+.env.*
+!.env.example
 
 # Local agent and setup notes
-AGENTS.md
-CLAUDE.md
-SUPABASE_SETUP.md
+*.md
 
 # Common ignores
 node_modules/

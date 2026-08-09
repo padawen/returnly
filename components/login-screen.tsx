@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { BrandMark } from '@/components/brand-mark'
+import { publicErrorMessage } from '@/lib/errors'
 
 export function LoginScreen({
   onLogin,
@@ -18,11 +19,7 @@ export function LoginScreen({
     try {
       await onLogin()
     } catch (loginError) {
-      setError(
-        loginError instanceof Error
-          ? loginError.message
-          : 'A bejelentkezés nem sikerült.',
-      )
+      setError(publicErrorMessage(loginError, 'A bejelentkezés nem sikerült.'))
       setPending(false)
     }
   }
@@ -37,7 +34,7 @@ export function LoginScreen({
           />
           <div className="relative overflow-hidden rounded-3xl shadow-lg shadow-primary/25">
             <Image
-              src="/returnly-icon-512.png"
+              src="/returnly-wine-icon-512.png"
               alt="Returnly logó"
               width={128}
               height={128}
