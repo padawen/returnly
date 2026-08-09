@@ -9,6 +9,11 @@ __v0_jsx-dev-runtime.ts
 # Environment variables
 .env*.local
 
+# Local agent and setup notes
+AGENTS.md
+CLAUDE.md
+SUPABASE_SETUP.md
+
 # Common ignores
 node_modules/
 .pnpm-store/
