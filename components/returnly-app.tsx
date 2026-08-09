@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { entryTotal, type Entry } from '@/lib/data'
+import { isSupabaseConfigured } from '@/lib/supabase/client'
 import { StoreProvider, useStore } from '@/components/store'
 import { LoginScreen } from '@/components/login-screen'
 import { DashboardScreen } from '@/components/dashboard-screen'
@@ -27,11 +28,32 @@ function AppInner() {
     markAllReturned,
     signInWithGoogle,
     signOut,
+    setTheme,
+    theme,
     updateEntry,
   } = useStore()
   const [tab, setTab] = useState<Tab>('home')
+  const [darkMode, setDarkMode] = useState(false)
   const [sheet, setSheet] = useState<SheetState | null>(null)
   const [toast, setToast] = useState<ToastData | null>(null)
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      const savedTheme = window.localStorage.getItem('returnly-theme')
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      setDarkMode(savedTheme ? savedTheme === 'dark' : prefersDark)
+      return
+    }
+
+    setDarkMode(theme === 'dark')
+  }, [theme])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('dark', darkMode)
+    root.classList.toggle('light', !darkMode)
+    window.localStorage.setItem('returnly-theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
 
   if (isLoading) {
     return <LoadingScreen />
@@ -73,15 +95,20 @@ function AppInner() {
     <main className="min-h-dvh bg-background">
       {tab === 'home' && (
         <DashboardScreen
-          onAdd={() => setSheet({ mode: 'add' })}
           onEdit={(entry: Entry) => setSheet({ mode: 'edit', entry })}
           onProfile={() => setTab('profile')}
+          onHome={() => setTab('home')}
+          darkMode={darkMode}
+          onToggleDarkMode={() => {
+            void setTheme(darkMode ? 'light' : 'dark')
+          }}
         />
       )}
       {tab === 'profile' && (
         <ProfileScreen
           onLogout={signOut}
           onMarkReturned={handleReturnAll}
+          onHome={() => setTab('home')}
         />
       )}
 

@@ -1,17 +1,30 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, LogOut, RotateCcw, ShieldCheck, UserPlus, Users } from 'lucide-react'
+import {
+  Check,
+  GlassWater,
+  LogOut,
+  Milk,
+  RotateCcw,
+  ShieldCheck,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react'
 import { formatNumber } from '@/lib/data'
 import { useStore } from '@/components/store'
 import { UserAvatar } from '@/components/user-avatar'
+import { BrandMark } from '@/components/brand-mark'
 
 export function ProfileScreen({
   onLogout,
   onMarkReturned,
+  onHome,
 }: {
   onLogout: () => Promise<void>
   onMarkReturned: () => Promise<void>
+  onHome: () => void
 }) {
   const {
     allTotals,
@@ -28,6 +41,8 @@ export function ProfileScreen({
   const [justSaved, setJustSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [returning, setReturning] = useState(false)
+  const [confirmReturnOpen, setConfirmReturnOpen] = useState(false)
+  const [returnError, setReturnError] = useState<string | null>(null)
   const [promotingId, setPromotingId] = useState<string | null>(null)
 
   const myEntries = entries.filter((entry) => entry.userId === currentUser.id)
@@ -47,17 +62,32 @@ export function ProfileScreen({
 
   const handleReturn = async () => {
     if (totals.total === 0 || returning) return
-    if (
-      !window.confirm(
-        `Biztosan visszavitték a jelenlegi ${formatNumber(totals.total)} db-ot? Az előzmények megmaradnak.`,
-      )
-    ) {
-      return
-    }
+    setReturnError(null)
+    setConfirmReturnOpen(true)
+  }
 
+  const confirmReturn = async () => {
+    if (totals.total === 0 || returning) return
     setReturning(true)
+    setReturnError(null)
     try {
       await onMarkReturned()
+      setConfirmReturnOpen(false)
+    } catch (error) {
+      const rawMessage =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' && error !== null && 'message' in error
+            ? String((error as { message?: unknown }).message ?? '')
+            : ''
+
+      const message =
+        rawMessage === 'not_admin'
+          ? 'Ezt a műveletet csak admin végezheti el.'
+          : rawMessage === 'nothing_to_return'
+            ? 'Nincs visszavitelre váró készlet.'
+            : rawMessage || 'A visszavitel rögzítése nem sikerült.'
+      setReturnError(message)
     } finally {
       setReturning(false)
     }
@@ -74,6 +104,14 @@ export function ProfileScreen({
 
   return (
     <div className="mx-auto w-full max-w-2xl px-5 pb-32 pt-10">
+      <button
+        type="button"
+        onClick={onHome}
+        aria-label="Vissza a kezdőlapra"
+        className="mb-8 block rounded-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-95"
+      >
+        <BrandMark iconOnly />
+      </button>
       <header className="flex flex-col items-center text-center">
         <UserAvatar user={currentUser} size="lg" />
         <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
@@ -125,7 +163,7 @@ export function ProfileScreen({
 
       <section className="mt-4 rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-semibold text-card-foreground">
               Jelenlegi készlet
             </p>
@@ -134,7 +172,7 @@ export function ProfileScreen({
               törlődnek.
             </p>
           </div>
-          <span className="font-mono text-2xl font-bold tabular-nums text-foreground">
+          <span className="shrink-0 whitespace-nowrap font-mono text-2xl font-bold tabular-nums text-foreground">
             {formatNumber(totals.total)} db
           </span>
         </div>
@@ -211,6 +249,123 @@ export function ProfileScreen({
         <LogOut className="size-4.5" />
         Kijelentkezés
       </button>
+
+      {confirmReturnOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 sm:items-center sm:pb-0">
+          <button
+            type="button"
+            aria-label="Bezárás"
+            onClick={() => setConfirmReturnOpen(false)}
+            className="absolute inset-0 bg-foreground/45 backdrop-blur-sm"
+          />
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="return-confirm-title"
+            className="relative w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-2xl"
+          >
+            <button
+              type="button"
+              onClick={() => setConfirmReturnOpen(false)}
+              aria-label="Bezárás"
+              className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary"
+            >
+              <X className="size-5" />
+            </button>
+
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-pet-soft text-pet">
+              <RotateCcw className="size-6" />
+            </div>
+            <h2
+              id="return-confirm-title"
+              className="mt-5 text-2xl font-bold tracking-tight text-card-foreground"
+            >
+              Biztosan elvitték?
+            </h2>
+            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              A jelenlegi készlet lezárul, és új gyűjtési ciklus indul. Az eddigi
+              bejegyzések és az előzmények megmaradnak.
+            </p>
+
+            <div className="mt-5 grid grid-cols-3 gap-2">
+              <ConfirmStat label="Összesen" value={totals.total} />
+              <ConfirmStat
+                icon={<Milk className="size-4" />}
+                label="PET / ALU"
+                value={totals.pet}
+                tone="pet"
+              />
+              <ConfirmStat
+                icon={<GlassWater className="size-4" />}
+                label="Törhető üveg"
+                value={totals.glass}
+                tone="glass"
+              />
+            </div>
+
+            {returnError && (
+              <p
+                role="alert"
+                className="mt-4 rounded-xl bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive"
+              >
+                {returnError}
+              </p>
+            )}
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmReturnOpen(false)}
+                disabled={returning}
+                className="h-12 rounded-xl border border-border bg-secondary px-4 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-50"
+              >
+                Mégse
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmReturn()}
+                disabled={returning}
+                className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90 disabled:opacity-50"
+              >
+                <RotateCcw className="size-4" />
+                {returning ? 'Rögzítés…' : 'Visszavitték'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ConfirmStat({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon?: React.ReactNode
+  label: string
+  value: number
+  tone?: 'pet' | 'glass'
+}) {
+  const toneClass =
+    tone === 'pet'
+      ? 'bg-pet-soft text-pet'
+      : tone === 'glass'
+        ? 'bg-glass-soft text-glass'
+        : 'bg-secondary text-foreground'
+
+  return (
+    <div className={`rounded-2xl px-3 py-3 ${toneClass}`}>
+      <div className="flex items-center gap-1.5 text-xs font-medium opacity-75">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className="mt-1 font-mono text-xl font-bold tabular-nums">
+        {formatNumber(value)}
+      </p>
     </div>
   )
 }

@@ -21,6 +21,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 
 type EntryInput = { pet: number; glass: number }
 type Totals = { pet: number; glass: number; total: number }
+export type Theme = 'light' | 'dark'
 export type ReturnSummary = Totals & { id: string }
 
 type ProfileRow = {
@@ -28,6 +29,7 @@ type ProfileRow = {
   email: string
   display_name: string
   nickname: string
+  theme: Theme
 }
 
 type RoleRow = {
@@ -54,13 +56,16 @@ type StoreValue = {
   isLoading: boolean
   error: string | null
   nickname: string
+  theme: Theme
   setNickname: (value: string) => Promise<void>
+  setTheme: (value: Theme) => Promise<void>
   totals: Totals
   allTotals: Totals
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   addEntry: (input: EntryInput) => Promise<Entry>
   updateEntry: (id: string, input: EntryInput) => Promise<void>
+  deleteEntry: (id: string) => Promise<void>
   markAllReturned: () => Promise<ReturnSummary>
   grantAdmin: (userId: string) => Promise<void>
   /** Returns the user with their display name (nickname wins for the current user). */
@@ -90,6 +95,28 @@ function firstName(name: string, email: string) {
   return name.trim().split(/\s+/)[0] || email.split('@')[0] || 'Csapattag'
 }
 
+function avatarUrl(user: SupabaseUser | null) {
+  const metadata = user?.user_metadata ?? {}
+  const candidates = [metadata.avatar_url, metadata.picture]
+  return candidates.find(
+    (value): value is string =>
+      typeof value === 'string' && value.trim().length > 0,
+  )
+}
+
+function toError(error: unknown, fallback: string) {
+  if (error instanceof Error) return error
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim()) {
+      return new Error(message)
+    }
+  }
+
+  return new Error(fallback)
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => createClient(), [])
   const [authUser, setAuthUser] = useState<SupabaseUser | null>(null)
@@ -100,6 +127,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     isSupabaseConfigured ? [] : INITIAL_ENTRIES,
   )
   const [localNickname, setLocalNickname] = useState('')
+  const [localTheme, setLocalTheme] = useState<Theme>('light')
   const [isLoading, setIsLoading] = useState(isSupabaseConfigured)
   const [error, setError] = useState<string | null>(null)
 
@@ -111,7 +139,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const [profilesResult, rolesResult, entriesResult] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id,email,display_name,nickname')
+          .select('id,email,display_name,nickname,theme')
           .order('display_name'),
         supabase.from('user_roles').select('user_id,is_admin'),
         supabase
@@ -139,6 +167,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       const currentProfile = nextProfiles.find((profile) => profile.id === userId)
       setLocalNickname(currentProfile?.nickname ?? '')
+      setLocalTheme(currentProfile?.theme ?? 'light')
       setIsLoading(false)
     },
     [supabase],
@@ -274,6 +303,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [supabase],
   )
 
+  const deleteEntry = useCallback(
+    async (id: string) => {
+      if (!supabase) {
+        setEntries((previous) => previous.filter((entry) => entry.id !== id))
+        return
+      }
+
+      const { error: deleteError } = await supabase
+        .from('collection_entries')
+        .delete()
+        .eq('id', id)
+
+      if (deleteError) throw deleteError
+      setEntries((previous) => previous.filter((entry) => entry.id !== id))
+    },
+    [supabase],
+  )
+
   const setNickname = useCallback(
     async (value: string) => {
       const trimmed = value.trim()
@@ -297,6 +344,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [activeUserId, supabase],
   )
 
+  const setTheme = useCallback(
+    async (value: Theme) => {
+      const previousTheme = localTheme
+      setLocalTheme(value)
+
+      if (!supabase || !activeUserId) return
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ theme: value })
+        .eq('id', activeUserId)
+
+      if (updateError) {
+        setLocalTheme(previousTheme)
+        return
+      }
+
+      setProfiles((previous) =>
+        previous.map((profile) =>
+          profile.id === activeUserId
+            ? { ...profile, theme: value }
+            : profile,
+        ),
+      )
+    },
+    [activeUserId, localTheme, supabase],
+  )
+
   const markAllReturned = useCallback(async (): Promise<ReturnSummary> => {
     const activeTotals = totalsFor(entries.filter((entry) => !entry.returnEventId))
     if (activeTotals.total === 0) {
@@ -316,13 +391,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const { data, error: returnError } = await supabase.rpc(
       'mark_all_returned',
     )
-    if (returnError) throw returnError
+    if (returnError) {
+      throw toError(
+        returnError,
+        'A visszavitel rögzítése nem sikerült.',
+      )
+    }
 
     const result = (Array.isArray(data) ? data[0] : data) as {
       id: string
       pet_count: number
       glass_count: number
       total_count: number
+    }
+    if (!result?.id) {
+      throw new Error('A visszavitel válasza hiányos.')
     }
     setEntries((previous) =>
       previous.map((entry) =>
@@ -364,6 +447,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StoreValue>(() => {
     const roleById = new Map(roles.map((role) => [role.user_id, role.is_admin]))
     const profileById = new Map(profiles.map((profile) => [profile.id, profile]))
+    const authAvatarUrl = avatarUrl(authUser)
 
     const team: User[] = profiles
       .map((profile, index) => {
@@ -377,7 +461,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           isAdmin: roleById.get(profile.id) ?? false,
           photoUrl:
             profile.id === authUser?.id
-              ? authUser.user_metadata.avatar_url
+              ? authAvatarUrl
               : undefined,
         }
       })
@@ -397,7 +481,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         firstName: firstName(localNickname || fallbackName, authUser?.email ?? CURRENT_USER.email),
         email: authUser?.email ?? CURRENT_USER.email,
         isAdmin: mockLoggedIn || false,
-        photoUrl: authUser?.user_metadata.avatar_url ?? CURRENT_USER.photoUrl,
+        photoUrl: authAvatarUrl ?? CURRENT_USER.photoUrl,
       }
 
     if (localNickname.trim() && currentProfile?.id === currentUser.id) {
@@ -423,13 +507,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isLoading,
       error,
       nickname: localNickname,
+      theme: localTheme,
       setNickname,
+      setTheme,
       totals,
       allTotals,
       signInWithGoogle,
       signOut,
       addEntry,
       updateEntry,
+      deleteEntry,
       markAllReturned,
       grantAdmin,
       resolveUser: (id: string) =>
@@ -438,17 +525,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [
     activeUserId,
     addEntry,
+    deleteEntry,
     authUser,
     entries,
     error,
     grantAdmin,
     isLoading,
     localNickname,
+    localTheme,
     markAllReturned,
     mockLoggedIn,
     profiles,
     roles,
     setNickname,
+    setTheme,
     signInWithGoogle,
     signOut,
     updateEntry,

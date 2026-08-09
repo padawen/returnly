@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { User } from '@/lib/data'
 
@@ -31,10 +32,18 @@ export function UserAvatar({
   size?: keyof typeof SIZE_MAP
   className?: string
 }) {
-  if (user.photoUrl) {
+  const [imageFailed, setImageFailed] = useState(false)
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [user.photoUrl])
+
+  if (user.photoUrl && !imageFailed) {
     return (
       <img
-        src={user.photoUrl || '/placeholder.svg'}
+        src={user.photoUrl}
+        referrerPolicy="no-referrer"
+        onError={() => setImageFailed(true)}
         alt={`${user.name} profilképe`}
         className={cn(
           'shrink-0 rounded-full object-cover ring-1 ring-inset ring-black/5',

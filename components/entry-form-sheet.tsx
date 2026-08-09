@@ -28,6 +28,9 @@ export function EntryFormSheet({
   const { currentUser, resolveUser } = useStore()
   const [pet, setPet] = useState(0)
   const [glass, setGlass] = useState(0)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartY = useRef<number | null>(null)
   const open = state !== null
 
   // Reset fields whenever the sheet opens
@@ -41,6 +44,13 @@ export function EntryFormSheet({
       setGlass(0)
     }
   }, [state])
+
+  useEffect(() => {
+    if (open) return
+    setDragOffset(0)
+    setIsDragging(false)
+    dragStartY.current = null
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -58,6 +68,31 @@ export function EntryFormSheet({
   const isEdit = state?.mode === 'edit'
   const creator = isEdit ? resolveUser(state.entry.userId) : currentUser
   const total = entryTotal({ pet, glass })
+
+  const handleDragStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!open) return
+    dragStartY.current = event.clientY
+    setIsDragging(true)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const handleDragMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragStartY.current === null) return
+    setDragOffset(Math.max(0, event.clientY - dragStartY.current))
+  }
+
+  const handleDragEnd = () => {
+    if (dragStartY.current === null) return
+    const shouldClose = dragOffset > 110
+    dragStartY.current = null
+    setIsDragging(false)
+    if (shouldClose) {
+      setDragOffset(0)
+      onClose()
+    } else {
+      setDragOffset(0)
+    }
+  }
 
   return (
     <div
@@ -83,10 +118,18 @@ export function EntryFormSheet({
           'relative w-full max-w-md rounded-t-3xl bg-card p-5 pb-8 shadow-2xl transition-transform duration-300 ease-out sm:rounded-3xl sm:pb-5',
           open ? 'translate-y-0' : 'translate-y-full',
         )}
+        style={{
+          transform: open ? `translateY(${dragOffset}px)` : undefined,
+          transition: isDragging ? 'none' : undefined,
+        }}
       >
         <div
           aria-hidden="true"
-          className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-border sm:hidden"
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+          onPointerCancel={handleDragEnd}
+          className="mx-auto mb-4 h-6 w-16 touch-none cursor-grab select-none rounded-full py-2 active:cursor-grabbing sm:hidden"
         />
 
         <div className="mb-5 flex items-start justify-between">
@@ -216,8 +259,9 @@ function NumberField({
             onChange(clamp(digits === '' ? 0 : Number.parseInt(digits, 10)))
           }}
           className={cn(
-            'min-w-0 flex-1 rounded-xl py-2 text-center font-mono text-4xl font-bold tabular-nums text-foreground outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground/40',
+            'min-w-0 flex-1 rounded-xl py-2 text-center font-mono text-4xl font-bold tabular-nums outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground/40',
             toneBg,
+            toneText,
           )}
           aria-label={`${label} darabszám`}
         />
@@ -230,6 +274,23 @@ function NumberField({
         </StepButton>
       </div>
 
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {[2, 4, 6].map((amount) => (
+          <button
+            key={amount}
+            type="button"
+            onClick={() => onChange(clamp(value + amount))}
+            className={cn(
+              'h-9 rounded-xl text-sm font-semibold transition-colors active:translate-y-px',
+              toneBg,
+              toneText,
+              'hover:brightness-95 dark:hover:brightness-110',
+            )}
+          >
+            +{amount}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

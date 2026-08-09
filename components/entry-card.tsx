@@ -1,6 +1,6 @@
 'use client'
 
-import { GlassWater, Milk, Pencil } from 'lucide-react'
+import { GlassWater, Milk, Pencil, Trash2 } from 'lucide-react'
 import {
   entryTotal,
   formatEntryDateTime,
@@ -13,9 +13,11 @@ import { UserAvatar } from '@/components/user-avatar'
 export function EntryCard({
   entry,
   onEdit,
+  onDelete,
 }: {
   entry: Entry
   onEdit: (entry: Entry) => void
+  onDelete?: (entry: Entry) => void
 }) {
   const { resolveUser } = useStore()
   const user = resolveUser(entry.userId)
@@ -58,14 +60,28 @@ export function EntryCard({
         />
       </div>
 
-      <button
-        type="button"
-        onClick={() => onEdit(entry)}
-        className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary text-sm font-semibold text-secondary-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:translate-y-px"
+      <div
+        className={`mt-4 grid gap-2 ${onDelete ? 'grid-cols-2' : 'grid-cols-1'}`}
       >
-        <Pencil className="size-4" />
-        Szerkesztés
-      </button>
+        <button
+          type="button"
+          onClick={() => onEdit(entry)}
+          className="flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-secondary text-sm font-semibold text-secondary-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:translate-y-px"
+        >
+          <Pencil className="size-4" />
+          Szerkesztés
+        </button>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(entry)}
+            className="flex h-11 items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/10 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/15 active:translate-y-px"
+          >
+            <Trash2 className="size-4" />
+            Törlés
+          </button>
+        )}
+      </div>
     </li>
   )
 }

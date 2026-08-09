@@ -14,32 +14,30 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Returnly — Bottle Return Tracker',
+  title: 'Returnly — Palackvisszavitel-követő',
   description:
-    'Fast, mobile-first tracking of daily returned bottles and containers for your team.',
+    'Palackgyűjtés és visszavitel követése egyszerűen, a csapatoddal együtt.',
   generator: 'v0.app',
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
+        url: '/returnly-icon-192.png',
+        type: 'image/png',
+        sizes: '192x192',
       },
       {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
+        url: '/returnly-logo.png',
+        type: 'image/png',
+        sizes: '1254x1254',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: '/returnly-icon-180.png',
   },
 }
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#f4f8f5',
+  themeColor: '#009f6b',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Recycle } from 'lucide-react'
+import Image from 'next/image'
+import { BrandMark } from '@/components/brand-mark'
 
 export function LoginScreen({
   onLogin,
@@ -34,14 +35,18 @@ export function LoginScreen({
             aria-hidden="true"
             className="absolute -inset-6 rounded-full bg-pet-soft blur-2xl"
           />
-          <div className="relative flex size-20 items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
-            <Recycle className="size-10" strokeWidth={2.25} />
+          <div className="relative overflow-hidden rounded-3xl shadow-lg shadow-primary/25">
+            <Image
+              src="/returnly-icon-512.png"
+              alt="Returnly logó"
+              width={128}
+              height={128}
+              className="size-32"
+            />
           </div>
         </div>
 
-        <h1 className="text-3xl font-bold tracking-tight text-foreground text-balance">
-          Returnly
-        </h1>
+        <BrandMark className="justify-center text-lg" />
         <p className="mt-3 max-w-xs text-pretty leading-relaxed text-muted-foreground">
           Kövesd nyomon minden visszaváltott palackot és flakont, amit a
           csapatod feldolgoz – valós időben.
