@@ -106,6 +106,22 @@ export function formatTime(iso: string): string {
   })
 }
 
+export function formatEntryDateTime(iso: string): string {
+  const date = new Date(iso)
+  const today = new Date()
+  const time = formatTime(iso)
+
+  if (date.toDateString() === today.toDateString()) {
+    return `Ma, ${time}`
+  }
+
+  return `${date.toLocaleDateString('hu-HU', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })}, ${time}`
+}
+
 export function formatFullDate(date = new Date()): string {
   return date.toLocaleDateString('hu-HU', {
     year: 'numeric',

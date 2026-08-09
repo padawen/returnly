@@ -1,7 +1,12 @@
 'use client'
 
 import { GlassWater, Milk, Pencil } from 'lucide-react'
-import { entryTotal, formatNumber, formatTime, type Entry } from '@/lib/data'
+import {
+  entryTotal,
+  formatEntryDateTime,
+  formatNumber,
+  type Entry,
+} from '@/lib/data'
 import { useStore } from '@/components/store'
 import { UserAvatar } from '@/components/user-avatar'
 
@@ -25,7 +30,7 @@ export function EntryCard({
             {user.name}
           </p>
           <p className="text-sm text-muted-foreground">
-            {formatTime(entry.createdAt)}
+            {formatEntryDateTime(entry.createdAt)}
           </p>
         </div>
         <div className="flex flex-col items-end">
