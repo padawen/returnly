@@ -6,7 +6,7 @@ import type { User } from '@/lib/data'
 const COLOR_MAP: Record<string, string> = {
   pet: 'bg-pet-soft text-pet',
   glass: 'bg-glass-soft text-glass',
-  neutral: 'bg-secondary text-secondary-foreground',
+  neutral: 'bg-muted text-foreground',
 }
 
 const SIZE_MAP = {
@@ -21,9 +21,12 @@ const IMAGE_SIZE_MAP = {
   lg: 96,
 } as const
 
-function initials(name: string): string {
-  return name
+function initials(name: string, fallback = ''): string {
+  const value = name.trim() || fallback.trim()
+
+  return value
     .split(' ')
+    .filter(Boolean)
     .map((part) => part[0])
     .slice(0, 2)
     .join('')
@@ -40,6 +43,7 @@ export function UserAvatar({
   className?: string
 }) {
   const [imageFailed, setImageFailed] = useState(false)
+  const fallbackInitials = initials(user.name, user.email)
 
   useEffect(() => {
     setImageFailed(false)
@@ -74,7 +78,7 @@ export function UserAvatar({
         className,
       )}
     >
-      {initials(user.name)}
+      {fallbackInitials || '?'}
     </div>
   )
 }
