@@ -75,6 +75,7 @@ function AppInner() {
         <DashboardScreen
           onAdd={() => setSheet({ mode: 'add' })}
           onEdit={(entry: Entry) => setSheet({ mode: 'edit', entry })}
+          onProfile={() => setTab('profile')}
         />
       )}
       {tab === 'profile' && (

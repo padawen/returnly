@@ -216,7 +216,8 @@ function NumberField({
             onChange(clamp(digits === '' ? 0 : Number.parseInt(digits, 10)))
           }}
           className={cn(
-            'min-w-0 flex-1 rounded-xl bg-secondary py-2 text-center font-mono text-4xl font-bold tabular-nums text-foreground outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground/40',
+            'min-w-0 flex-1 rounded-xl py-2 text-center font-mono text-4xl font-bold tabular-nums text-foreground outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground/40',
+            toneBg,
           )}
           aria-label={`${label} darabszám`}
         />
