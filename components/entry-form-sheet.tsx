@@ -229,18 +229,6 @@ function NumberField({
         </StepButton>
       </div>
 
-      <div className="mt-3 flex gap-2">
-        {[1, 2, 4, 6].map((step) => (
-          <button
-            key={step}
-            type="button"
-            onClick={() => onChange(clamp(value + step))}
-            className="flex-1 rounded-lg bg-secondary py-1.5 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:translate-y-px"
-          >
-            +{step}
-          </button>
-        ))}
-      </div>
     </div>
   )
 }
