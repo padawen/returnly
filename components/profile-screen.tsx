@@ -338,8 +338,7 @@ export function ProfileScreen({
             </li>
           ))}
         </ul>
-        <p className="mt-3 px-1 text-xs leading-relaxed text-muted-foreground">
-          A csapat minden tagja láthatja és szerkesztheti az összes bejegyzést.
+        <p className="mt-3 px-1 text-center text-xs leading-relaxed text-muted-foreground">
           A teljes történetben {formatNumber(allTotals.total)} db szerepel.
         </p>
       </section>
