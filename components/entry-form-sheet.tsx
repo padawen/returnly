@@ -168,7 +168,7 @@ export function EntryFormSheet({
           </button>
         </div>
 
-        <fieldset disabled={pending} className="space-y-3">
+        <fieldset disabled={pending} className="min-w-0 space-y-3">
           <NumberField
             label="PET / ALU"
             icon={<Milk className="size-5" />}
@@ -287,7 +287,7 @@ function NumberField({
             onChange(clamp(digits === '' ? 0 : Number.parseInt(digits, 10)))
           }}
           className={cn(
-            'min-w-0 flex-1 rounded-xl py-2 text-center font-mono text-4xl font-bold tabular-nums outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground/40',
+            'w-0 min-w-0 flex-1 rounded-xl py-2 text-center font-mono text-4xl font-bold tabular-nums outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground/40',
             toneBg,
             toneText,
           )}
