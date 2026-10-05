@@ -181,3 +181,21 @@ export async function markAllReturned(db: Database, userId: string): Promise<Ret
     return { id: event.id, pet, glass, total: pet + glass, entryIds: open.map((entry) => entry.id) }
   })
 }
+
+export async function restoreReturn(db: Database, userId: string, eventId: string): Promise<ReturnSummary> {
+  validId(eventId)
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT set_config('returnly.actor_id', ${userId}, true)`)
+    await admin(tx, userId)
+    await collectionLock(tx)
+    // collectionLock serializes return mutations; FOR UPDATE would also require
+    // UPDATE privileges on return_events, which the app deliberately lacks.
+    const [event] = await tx.select().from(returns).where(eq(returns.id, eventId))
+    if (!event) throw new PublicError('Ez a visszavitel már nem található. Frissítsd az előzményeket.')
+    const restored = await tx.update(entries).set({ returnEventId: null })
+      .where(eq(entries.returnEventId, eventId)).returning({ id: entries.id })
+    await tx.delete(returns).where(eq(returns.id, eventId))
+    return { id: eventId, pet: event.pet, glass: event.glass,
+      total: event.pet + event.glass, entryIds: restored.map(entry => entry.id) }
+  })
+}

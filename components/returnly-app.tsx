@@ -22,6 +22,7 @@ function AppInner() {
     isAuthenticated,
     isLoading,
     markAllReturned,
+    restoreReturn,
     refresh,
     signInWithGoogle,
     signOut,
@@ -81,6 +82,16 @@ function AppInner() {
       total: summary.total,
     })
   }
+  const handleRestoreReturn = async (eventId: string) => {
+    const summary = await restoreReturn(eventId)
+    setToast({
+      id: Date.now(),
+      title: 'Készlet visszaállítva',
+      pet: summary.pet,
+      glass: summary.glass,
+      total: summary.total,
+    })
+  }
   return (
     <main className="min-h-dvh bg-background">
       <div inert={sheet !== null}>
@@ -103,6 +114,7 @@ function AppInner() {
         <ProfileScreen
           onLogout={signOut}
           onMarkReturned={handleReturnAll}
+          onRestoreReturn={handleRestoreReturn}
           onHome={() => setTab('home')}
           darkMode={darkMode}
           onToggleDarkMode={() => {

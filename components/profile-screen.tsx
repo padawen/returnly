@@ -1,32 +1,37 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Check,
-  GlassWater,
   LogOut,
-  Milk,
   RotateCcw,
   ShieldCheck,
   UserPlus,
   Users,
-  X,
 } from 'lucide-react'
-import { entryTotal, formatNumber, formatEntryDateTime } from '@/lib/data'
+import { entryTotal, formatNumber } from '@/lib/data'
 import { useStore } from '@/components/store'
 import { UserAvatar } from '@/components/user-avatar'
 import { AppHeader } from '@/components/app-header'
 import { publicErrorMessage } from '@/lib/errors'
+import type { ReturnEvent } from '@/lib/contracts'
+import { ReturnConfirmDialog } from '@/components/return-confirm-dialog'
+import { ReturnHistoryCard } from '@/components/return-history-card'
+import { EntryPagination } from '@/components/entry-pagination'
+
+const RETURNS_PER_PAGE = 2
 
 export function ProfileScreen({
   onLogout,
   onMarkReturned,
+  onRestoreReturn,
   onHome,
   darkMode,
   onToggleDarkMode,
 }: {
   onLogout: () => Promise<void>
   onMarkReturned: () => Promise<void>
+  onRestoreReturn: (eventId: string) => Promise<void>
   onHome: () => void
   darkMode: boolean
   onToggleDarkMode: () => void
@@ -57,7 +62,37 @@ export function ProfileScreen({
   const isMainAdmin = isAdmin && currentUser.isMainAdmin
   const [logoutPending, setLogoutPending] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
-  const [historyLimit, setHistoryLimit] = useState(5)
+  const [historyPage, setHistoryPage] = useState(1)
+  const [restoreEvent, setRestoreEvent] = useState<ReturnEvent | null>(null)
+  const [restoring, setRestoring] = useState(false)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+  const restoringRef = useRef(false)
+  const historyPageCount = Math.max(1, Math.ceil(returnEvents.length / RETURNS_PER_PAGE))
+  const currentHistoryPage = Math.min(historyPage, historyPageCount)
+  const visibleReturns = returnEvents.slice(
+    (currentHistoryPage - 1) * RETURNS_PER_PAGE,
+    currentHistoryPage * RETURNS_PER_PAGE,
+  )
+
+  useEffect(() => {
+    setHistoryPage(page => Math.min(page, historyPageCount))
+  }, [historyPageCount])
+
+  const confirmRestore = async () => {
+    if (!restoreEvent || restoringRef.current) return
+    restoringRef.current = true
+    setRestoring(true)
+    setRestoreError(null)
+    try {
+      await onRestoreReturn(restoreEvent.id)
+      setRestoreEvent(null)
+    } catch (error) {
+      setRestoreError(publicErrorMessage(error, 'A visszaállítás nem sikerült.'))
+    } finally {
+      restoringRef.current = false
+      setRestoring(false)
+    }
+  }
 
   const myEntries = entries.filter((entry) => entry.userId === currentUser.id)
   const myTotal = myEntries.reduce((sum, entry) => sum + entryTotal(entry), 0)
@@ -202,7 +237,7 @@ export function ProfileScreen({
           <button
             type="button"
             onClick={() => void handleReturn()}
-            disabled={totals.total === 0 || returning}
+            disabled={totals.total === 0 || returning || restoring}
             className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40"
           >
             <RotateCcw className="size-4" />
@@ -219,24 +254,24 @@ export function ProfileScreen({
           </p>
         ) : (
           <ol className="space-y-3">
-            {returnEvents.slice(0, historyLimit).map(event => (
-              <li key={event.id} className="rounded-2xl border border-border bg-card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <time dateTime={event.returnedAt} className="text-sm font-semibold text-card-foreground">{formatEntryDateTime(event.returnedAt)}</time>
-                    <p className="mt-1 text-sm text-muted-foreground">Rögzítette: {resolveUser(event.performedBy).name}</p>
-                  </div>
-                  <span className="shrink-0 font-mono text-xl font-bold text-foreground">{formatNumber(event.total)} db</span>
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">PET / ALU: {formatNumber(event.pet)} db · Törhető üveg: {formatNumber(event.glass)} db</p>
-              </li>
+            {visibleReturns.map(event => (
+              <ReturnHistoryCard
+                key={event.id}
+                event={event}
+                entries={entries.filter(entry => entry.returnEventId === event.id)}
+                user={resolveUser(event.performedBy)}
+                pending={returning || restoring}
+                onRestore={isAdmin ? () => { setRestoreError(null); setRestoreEvent(event) } : undefined}
+              />
             ))}
           </ol>
         )}
-        {returnEvents.length > historyLimit && <button type="button" onClick={() => setHistoryLimit(limit => limit + 5)}
-          className="mt-3 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground">
-          Korábbi visszavitelek
-        </button>}
+        <EntryPagination
+          page={currentHistoryPage}
+          pageCount={historyPageCount}
+          onPrevious={() => setHistoryPage(currentHistoryPage - 1)}
+          onNext={() => setHistoryPage(currentHistoryPage + 1)}
+        />
       </section>
 
       <section className="mt-8">
@@ -326,122 +361,26 @@ export function ProfileScreen({
       </button>
       {logoutError && <p role="alert" className="mt-3 text-sm text-destructive">{logoutError}</p>}
 
-      {confirmReturnOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button
-            type="button"
-            aria-label="Bezárás"
-            onClick={() => setConfirmReturnOpen(false)}
-            className="absolute inset-0 bg-foreground/45 backdrop-blur-sm"
-          />
-
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="return-confirm-title"
-            className="relative w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-2xl"
-          >
-            <button
-              type="button"
-              onClick={() => setConfirmReturnOpen(false)}
-              aria-label="Bezárás"
-              className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary"
-            >
-              <X className="size-5" />
-            </button>
-
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-pet-soft text-pet">
-              <RotateCcw className="size-6" />
-            </div>
-            <h2
-              id="return-confirm-title"
-              className="mt-5 text-2xl font-bold tracking-tight text-card-foreground"
-            >
-              Biztosan elvitték?
-            </h2>
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              A jelenlegi készlet lezárul, és új gyűjtési ciklus indul. Az eddigi
-              bejegyzések és az előzmények megmaradnak.
-            </p>
-
-            <div className="mt-5 grid grid-cols-3 gap-2">
-              <ConfirmStat label="Összesen" value={totals.total} />
-              <ConfirmStat
-                icon={<Milk className="size-4" />}
-                label="PET / ALU"
-                value={totals.pet}
-                tone="pet"
-              />
-              <ConfirmStat
-                icon={<GlassWater className="size-4" />}
-                label="Törhető üveg"
-                value={totals.glass}
-                tone="glass"
-              />
-            </div>
-
-            {returnError && (
-              <p
-                role="alert"
-                className="mt-4 rounded-xl bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive"
-              >
-                {returnError}
-              </p>
-            )}
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmReturnOpen(false)}
-                disabled={returning}
-                className="h-12 rounded-xl border border-border bg-secondary px-4 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-50"
-              >
-                Mégse
-              </button>
-              <button
-                type="button"
-                onClick={() => void confirmReturn()}
-                disabled={returning}
-                className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90 disabled:opacity-50"
-              >
-                <RotateCcw className="size-4" />
-                {returning ? 'Rögzítés…' : 'Visszavitték'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {restoreEvent && (
+        <ReturnConfirmDialog
+          totals={restoreEvent}
+          returnedAt={restoreEvent.returnedAt}
+          pending={restoring}
+          error={restoreError}
+          onClose={() => { if (!restoringRef.current) setRestoreEvent(null) }}
+          onConfirm={() => void confirmRestore()}
+        />
       )}
-    </div>
-  )
-}
 
-function ConfirmStat({
-  icon,
-  label,
-  value,
-  tone,
-}: {
-  icon?: React.ReactNode
-  label: string
-  value: number
-  tone?: 'pet' | 'glass'
-}) {
-  const toneClass =
-    tone === 'pet'
-      ? 'bg-pet-soft text-pet'
-      : tone === 'glass'
-        ? 'bg-glass-soft text-glass'
-        : 'bg-secondary text-foreground'
-
-  return (
-    <div className={`rounded-2xl px-3 py-3 ${toneClass}`}>
-      <div className="flex items-center gap-1.5 text-xs font-medium opacity-75">
-        {icon}
-        <span>{label}</span>
-      </div>
-      <p className="mt-1 font-mono text-xl font-bold tabular-nums">
-        {formatNumber(value)}
-      </p>
+      {confirmReturnOpen && (
+        <ReturnConfirmDialog
+          totals={totals}
+          pending={returning}
+          error={returnError}
+          onClose={() => setConfirmReturnOpen(false)}
+          onConfirm={() => void confirmReturn()}
+        />
+      )}
     </div>
   )
 }

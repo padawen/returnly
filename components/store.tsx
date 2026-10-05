@@ -106,6 +106,7 @@ function useStoreValue(configured: boolean) {
     grantAdmin: async (id: string) => { unwrap(await actions.grantAdmin(id)); await refresh() },
     revokeAdmin: async (id: string) => { unwrap(await actions.revokeAdmin(id)); await refresh() },
     markAllReturned: async () => { const result = unwrap(await actions.markAllReturned()); await refresh(); return result },
+    restoreReturn: async (eventId: string) => { const result = unwrap(await actions.restoreReturn(eventId)); await refresh(); return result },
   }
 }
 const StoreContext = createContext<ReturnType<typeof useStoreValue> | null>(null)

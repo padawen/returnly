@@ -13,7 +13,7 @@ import { EntryPagination } from '@/components/entry-pagination'
 import { DeleteEntryDialog } from '@/components/delete-entry-dialog'
 import { publicErrorMessage } from '@/lib/errors'
 
-const ENTRIES_PER_PAGE = 5
+const ENTRIES_PER_PAGE = 2
 
 export function DashboardScreen({
   onEdit,

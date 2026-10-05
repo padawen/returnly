@@ -48,6 +48,10 @@ export async function markAllReturned() {
   return safely(() => withDatabase(async (db) => service.markAllReturned(db, await requireUser(db))))
 }
 
+export async function restoreReturn(eventId: string) {
+  return safely(() => withDatabase(async (db) => service.restoreReturn(db, await requireUser(db), eventId)))
+}
+
 export async function revokeAdmin(userId: string) {
   return safely(() => withDatabase(async (db) => service.revokeAdmin(db, await requireUser(db), userId)))
 }
