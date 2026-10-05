@@ -1,6 +1,5 @@
 type ErrorDetails = {
   code?: unknown
-  message?: unknown
 }
 
 function detailsOf(error: unknown): ErrorDetails {
@@ -9,7 +8,6 @@ function detailsOf(error: unknown): ErrorDetails {
   const value = error as ErrorDetails
   return {
     code: typeof value.code === 'string' ? value.code : undefined,
-    message: typeof value.message === 'string' ? value.message : undefined,
   }
 }
 
@@ -18,7 +16,7 @@ export function publicErrorMessage(
   error: unknown,
   fallback = 'A művelet nem sikerült. Próbáld újra később.',
 ): string {
-  const { code, message } = detailsOf(error)
+  const { code } = detailsOf(error)
 
   switch (code) {
     case '42501':
@@ -29,15 +27,6 @@ export function publicErrorMessage(
     case '23514':
     case '22P02':
       return 'A megadott adat nem érvényes.'
-    case 'over_request_rate_limit':
-      return 'Túl sok próbálkozás történt. Próbáld újra később.'
-  }
-
-  switch (message) {
-    case 'not_admin':
-      return 'Ezt a műveletet csak admin végezheti el.'
-    case 'nothing_to_return':
-      return 'Nincs visszavitelre váró készlet.'
   }
 
   return fallback

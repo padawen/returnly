@@ -8,6 +8,7 @@ export type User = {
   /** optional Google account profile photo */
   photoUrl?: string
   isAdmin?: boolean
+  isMainAdmin?: boolean
 }
 
 export type Entry = {
@@ -15,45 +16,12 @@ export type Entry = {
   userId: string
   pet: number
   glass: number
+  revision: number
   /** ISO timestamp for when the entry was created today */
   createdAt: string
   /** Return event that closed this entry's active collection cycle */
   returnEventId?: string | null
 }
-
-export const CURRENT_USER: User = {
-  id: 'u_david',
-  name: 'Herczeg Dávid',
-  firstName: 'Dávid',
-  email: 'daveherczeg@gmail.com',
-  color: 'pet',
-  isAdmin: true,
-}
-
-function todayAt(hours: number, minutes: number): string {
-  const d = new Date()
-  d.setHours(hours, minutes, 0, 0)
-  return d.toISOString()
-}
-
-export const INITIAL_ENTRIES: Entry[] = [
-  {
-    id: 'e_1',
-    userId: 'u_david',
-    pet: 84,
-    glass: 12,
-    createdAt: todayAt(14, 32),
-    returnEventId: null,
-  },
-  {
-    id: 'e_2',
-    userId: 'u_bence',
-    pet: 46,
-    glass: 7,
-    createdAt: todayAt(9, 8),
-    returnEventId: null,
-  },
-]
 
 export function entryTotal(entry: Pick<Entry, 'pet' | 'glass'>): number {
   return entry.pet + entry.glass

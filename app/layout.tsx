@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { connection } from 'next/server'
 import './globals.css'
 
 const geistSans = Geist({
@@ -14,10 +15,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Returnly- SK',
+  title: 'Returnly',
   description:
     'Palackgyűjtés és visszavitel követése egyszerűen, a csapatoddal együtt.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
@@ -44,11 +44,13 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Every HTML page, including the not-found page, needs its request's script nonce.
+  await connection()
   return (
     <html
       lang="hu"

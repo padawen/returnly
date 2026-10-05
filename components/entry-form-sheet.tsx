@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useRef, useState } from 'react'
 import { GlassWater, Milk, Minus, Plus, X } from 'lucide-react'
 import {
@@ -11,31 +10,38 @@ import {
 import { useStore } from '@/components/store'
 import { UserAvatar } from '@/components/user-avatar'
 import { cn } from '@/lib/utils'
-
 export type SheetState =
   | { mode: 'add' }
   | { mode: 'edit'; entry: Entry }
-
 export function EntryFormSheet({
   state,
   onClose,
   onSave,
+  onReload,
+  onSavingChange,
 }: {
   state: SheetState | null
   onClose: () => void
-  onSave: (input: { pet: number; glass: number }) => void
+  onSave: (input: { pet: number; glass: number }, requestId: string) => Promise<void>
+  onReload: (entry: Entry) => void
+  onSavingChange: (saving: boolean) => void
 }) {
-  const { currentUser, resolveUser } = useStore()
+  const { currentUser, resolveUser, entries, refresh } = useStore()
   const [pet, setPet] = useState(0)
   const [glass, setGlass] = useState(0)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const dragStartY = useRef<number | null>(null)
+  const saving = useRef(false)
+  const requestId = useRef<string | null>(null)
   const open = state !== null
-
   // Reset fields whenever the sheet opens
   useEffect(() => {
     if (!state) return
+    requestId.current = crypto.randomUUID()
+    setError(null)
     if (state.mode === 'edit') {
       setPet(state.entry.pet)
       setGlass(state.entry.glass)
@@ -44,18 +50,16 @@ export function EntryFormSheet({
       setGlass(0)
     }
   }, [state])
-
   useEffect(() => {
     if (open) return
     setDragOffset(0)
     setIsDragging(false)
     dragStartY.current = null
   }, [open])
-
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !saving.current) onClose()
     }
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
@@ -64,26 +68,25 @@ export function EntryFormSheet({
       document.body.style.overflow = ''
     }
   }, [open, onClose])
-
   const isEdit = state?.mode === 'edit'
+  const latestEntry = isEdit ? entries.find(entry => entry.id === state.entry.id) : undefined
+  const conflict = isEdit && (!latestEntry || latestEntry.returnEventId || latestEntry.revision !== state.entry.revision)
+  const close = () => { if (!saving.current) onClose() }
   const creator = isEdit ? resolveUser(state.entry.userId) : currentUser
   const total = entryTotal({ pet, glass })
-
   const handleDragStart = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!open) return
+    if (!open || saving.current) return
     dragStartY.current = event.clientY
     setIsDragging(true)
     event.currentTarget.setPointerCapture(event.pointerId)
   }
-
   const handleDragMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (dragStartY.current === null) return
     setDragOffset(Math.max(0, event.clientY - dragStartY.current))
   }
-
   const handleDragEnd = () => {
     if (dragStartY.current === null) return
-    const shouldClose = dragOffset > 110
+    const shouldClose = dragOffset > 110 && !saving.current
     dragStartY.current = null
     setIsDragging(false)
     if (shouldClose) {
@@ -93,7 +96,6 @@ export function EntryFormSheet({
       setDragOffset(0)
     }
   }
-
   return (
     <div
       className={cn(
@@ -101,12 +103,14 @@ export function EntryFormSheet({
         open ? 'opacity-100' : 'pointer-events-none opacity-0',
       )}
       aria-hidden={!open}
+      inert={!open}
     >
       <button
         type="button"
         aria-label="Bezárás"
         tabIndex={open ? 0 : -1}
-        onClick={onClose}
+        onClick={close}
+        disabled={pending}
         className="absolute inset-0 bg-foreground/40 backdrop-blur-[2px]"
       />
 
@@ -155,7 +159,8 @@ export function EntryFormSheet({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
+            disabled={pending}
             aria-label="Bezárás"
             className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary"
           >
@@ -163,7 +168,7 @@ export function EntryFormSheet({
           </button>
         </div>
 
-        <div className="space-y-3">
+        <fieldset disabled={pending} className="space-y-3">
           <NumberField
             label="PET / ALU"
             icon={<Milk className="size-5" />}
@@ -178,7 +183,7 @@ export function EntryFormSheet({
             value={glass}
             onChange={setGlass}
           />
-        </div>
+        </fieldset>
 
         <div className="mt-4 flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
           <span className="text-sm font-medium text-muted-foreground">
@@ -194,17 +199,41 @@ export function EntryFormSheet({
 
         <button
           type="button"
-          disabled={total === 0}
-          onClick={() => onSave({ pet, glass })}
+          disabled={total === 0 || pending || Boolean(conflict)}
+          onClick={async () => {
+            if (saving.current || !requestId.current) return
+            saving.current = true
+            onSavingChange(true)
+            setPending(true)
+            setDragOffset(0)
+            setIsDragging(false)
+            dragStartY.current = null
+            setError(null)
+            try { await onSave({ pet, glass }, requestId.current) }
+            catch (err) {
+              setError(err instanceof Error ? err.message : 'A mentés nem sikerült.')
+              await refresh()
+            }
+            finally { saving.current = false; onSavingChange(false); setPending(false) }
+          }}
           className="mt-4 flex h-14 w-full items-center justify-center rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:translate-y-px active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isEdit ? 'Módosítások mentése' : 'Bejegyzés mentése'}
+          {pending ? 'Mentés…' : isEdit ? 'Módosítások mentése' : 'Bejegyzés mentése'}
         </button>
+        {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
+        {conflict && <div role="alert" className="mt-3 space-y-2 text-sm text-destructive">
+          <p>{!latestEntry ? 'Ezt a bejegyzést közben törölték.' : latestEntry.returnEventId
+            ? 'Ezt a bejegyzést közben visszavitték, már nem módosítható.'
+            : 'Ezt a bejegyzést közben módosították. Töltsd újra a szerkesztőt.'}</p>
+          {latestEntry && !latestEntry.returnEventId && <button type="button" disabled={pending}
+            onClick={() => onReload(latestEntry)} className="rounded-xl border border-current px-3 py-2">
+            Friss adatok betöltése
+          </button>}
+        </div>}
       </div>
     </div>
   )
 }
-
 function NumberField({
   label,
   icon,
@@ -221,9 +250,7 @@ function NumberField({
   const inputRef = useRef<HTMLInputElement>(null)
   const toneText = tone === 'pet' ? 'text-pet' : 'text-glass'
   const toneBg = tone === 'pet' ? 'bg-pet-soft' : 'bg-glass-soft'
-
   const clamp = (n: number) => Math.max(0, Math.min(9999, n))
-
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center gap-2">
@@ -295,7 +322,6 @@ function NumberField({
     </div>
   )
 }
-
 function StepButton({
   label,
   onClick,

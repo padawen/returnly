@@ -12,7 +12,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { formatNumber } from '@/lib/data'
+import { entryTotal, formatNumber, formatEntryDateTime } from '@/lib/data'
 import { useStore } from '@/components/store'
 import { UserAvatar } from '@/components/user-avatar'
 import { AppHeader } from '@/components/app-header'
@@ -35,7 +35,10 @@ export function ProfileScreen({
     allTotals,
     currentUser,
     entries,
+    returnEvents,
+    resolveUser,
     grantAdmin,
+    revokeAdmin,
     isAdmin,
     nickname,
     setNickname,
@@ -51,6 +54,10 @@ export function ProfileScreen({
   const [returnError, setReturnError] = useState<string | null>(null)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [promotingId, setPromotingId] = useState<string | null>(null)
+  const isMainAdmin = isAdmin && currentUser.isMainAdmin
+  const [logoutPending, setLogoutPending] = useState(false)
+  const [logoutError, setLogoutError] = useState<string | null>(null)
+  const [historyLimit, setHistoryLimit] = useState(5)
 
   const myEntries = entries.filter((entry) => entry.userId === currentUser.id)
   const myTotal = myEntries.reduce((sum, entry) => sum + entryTotal(entry), 0)
@@ -102,6 +109,15 @@ export function ProfileScreen({
     } finally {
       setPromotingId(null)
     }
+  }
+
+  const handleRevokeAdmin = async (userId: string, name: string) => {
+    if (promotingId || !window.confirm(`Elveszed ${name} adminjogát?`)) return
+    setPromotingId(userId)
+    setAdminError(null)
+    try { await revokeAdmin(userId) }
+    catch { setAdminError('Az adminjog elvétele nem sikerült.') }
+    finally { setPromotingId(null) }
   }
 
   return (
@@ -195,6 +211,34 @@ export function ProfileScreen({
         )}
       </section>
 
+      <section className="mt-8" aria-labelledby="return-history-title">
+        <h2 id="return-history-title" className="mb-3 text-lg font-semibold text-foreground">Visszaviteli előzmények</h2>
+        {returnEvents.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
+            Még nem történt visszavitel. Az első lezárás után itt látod az előzményeket.
+          </p>
+        ) : (
+          <ol className="space-y-3">
+            {returnEvents.slice(0, historyLimit).map(event => (
+              <li key={event.id} className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <time dateTime={event.returnedAt} className="text-sm font-semibold text-card-foreground">{formatEntryDateTime(event.returnedAt)}</time>
+                    <p className="mt-1 text-sm text-muted-foreground">Rögzítette: {resolveUser(event.performedBy).name}</p>
+                  </div>
+                  <span className="shrink-0 font-mono text-xl font-bold text-foreground">{formatNumber(event.total)} db</span>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">PET / ALU: {formatNumber(event.pet)} db · Törhető üveg: {formatNumber(event.glass)} db</p>
+              </li>
+            ))}
+          </ol>
+        )}
+        {returnEvents.length > historyLimit && <button type="button" onClick={() => setHistoryLimit(limit => limit + 5)}
+          className="mt-3 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground">
+          Korábbi visszavitelek
+        </button>}
+      </section>
+
       <section className="mt-8">
         <div className="mb-3 flex items-center gap-2">
           <Users className="size-4 text-muted-foreground" />
@@ -218,10 +262,17 @@ export function ProfileScreen({
             >
               <UserAvatar user={member} size="sm" />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-card-foreground">
-                  {member.name}
+                <p className="flex items-center gap-1.5 font-medium text-card-foreground">
+                  <span className="truncate">{member.name}</span>
+                  {member.isAdmin && (
+                    <span className="inline-flex shrink-0 text-pet"
+                      title={member.isMainAdmin ? 'Főadmin' : 'Admin'}>
+                      <ShieldCheck className="size-3.5" aria-hidden="true" />
+                      <span className="sr-only">{member.isMainAdmin ? 'Főadmin' : 'Admin'}</span>
+                    </span>
+                  )}
                   {member.id === currentUser.id && (
-                    <span className="ml-2 rounded-full bg-pet-soft px-2 py-0.5 text-xs font-medium text-pet">
+                    <span className="shrink-0 rounded-full bg-pet-soft px-2 py-0.5 text-xs font-medium text-pet">
                       Te
                     </span>
                   )}
@@ -231,15 +282,18 @@ export function ProfileScreen({
                 </p>
               </div>
               {member.isAdmin ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-pet-soft px-2.5 py-1 text-xs font-semibold text-pet">
-                  <ShieldCheck className="size-3.5" />
-                  Admin
-                </span>
+                isMainAdmin && !member.isMainAdmin && (
+                  <button type="button" disabled={promotingId !== null}
+                    onClick={() => void handleRevokeAdmin(member.id, member.name)}
+                    className="shrink-0 rounded-full border border-destructive/30 px-2.5 py-1 text-xs font-semibold text-destructive disabled:opacity-50">
+                    {promotingId === member.id ? 'Mentés…' : 'Admin elvétele'}
+                  </button>
+                )
               ) : isAdmin ? (
                 <button
                   type="button"
                   onClick={() => void handleGrantAdmin(member.id)}
-                  disabled={promotingId === member.id}
+                  disabled={promotingId !== null}
                   className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
                 >
                   <UserPlus className="size-3.5" />
@@ -257,12 +311,20 @@ export function ProfileScreen({
 
       <button
         type="button"
-        onClick={() => void onLogout()}
+        disabled={logoutPending}
+        onClick={async () => {
+          setLogoutPending(true)
+          setLogoutError(null)
+          try { await onLogout() }
+          catch { setLogoutError('A kijelentkezés nem sikerült. Próbáld újra.') }
+          finally { setLogoutPending(false) }
+        }}
         className="mt-8 flex h-13 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card font-semibold text-foreground transition-colors hover:bg-secondary active:translate-y-px"
       >
         <LogOut className="size-4.5" />
         Kijelentkezés
       </button>
+      {logoutError && <p role="alert" className="mt-3 text-sm text-destructive">{logoutError}</p>}
 
       {confirmReturnOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -393,8 +455,4 @@ function StatCard({ label, value }: { label: string; value: number }) {
       <p className="mt-1 text-sm text-muted-foreground text-pretty">{label}</p>
     </div>
   )
-}
-
-function entryTotal(entry: { pet: number; glass: number }) {
-  return entry.pet + entry.glass
 }

@@ -1,18 +1,17 @@
 'use client'
-
 import { useState } from 'react'
 import Image from 'next/image'
 import { BrandMark } from '@/components/brand-mark'
 import { publicErrorMessage } from '@/lib/errors'
-
 export function LoginScreen({
   onLogin,
+  sessionError,
 }: {
   onLogin: () => Promise<void>
+  sessionError?: string | null
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const handleLogin = async () => {
     setPending(true)
     setError(null)
@@ -23,7 +22,6 @@ export function LoginScreen({
       setPending(false)
     }
   }
-
   return (
     <div className="flex min-h-dvh flex-col bg-background px-6">
       <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -45,8 +43,7 @@ export function LoginScreen({
 
         <BrandMark className="justify-center text-lg" />
         <p className="mt-3 max-w-xs text-pretty leading-relaxed text-muted-foreground">
-          Kövesd nyomon minden visszaváltott palackot és flakont, amit a
-          csapatod feldolgoz – valós időben.
+          Kövesd nyomon minden visszaváltott palackot és flakont, amit a csapatod feldolgoz – valós időben.
         </p>
       </div>
 
@@ -60,8 +57,8 @@ export function LoginScreen({
           <GoogleGlyph />
           {pending ? 'Átirányítás…' : 'Belépés Google-fiókkal'}
         </button>
-        {error && (
-          <p className="mt-3 text-center text-xs text-destructive">{error}</p>
+        {(error || sessionError) && (
+          <p role="alert" className="mt-3 text-center text-xs text-destructive">{error || sessionError}</p>
         )}
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Csak csapattagoknak. Minden bejegyzés közös a csapaton belül.
@@ -70,7 +67,6 @@ export function LoginScreen({
     </div>
   )
 }
-
 function GoogleGlyph() {
   return (
     <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
