@@ -2,8 +2,9 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { authClient } from '@/lib/auth/client'
 import * as actions from '@/app/actions/returnly'
-import { unwrap, type EntryInput, type Snapshot, type Theme } from '@/lib/contracts'
+import { unwrap, type EntryInput, type Snapshot } from '@/lib/contracts'
 import { type Entry, type User } from '@/lib/data'
+import { useThemePreference } from '@/components/use-theme-preference'
 export type { Theme, ReturnSummary } from '@/lib/contracts'
 const totalsFor = (entries: Entry[]) => {
   const pet = entries.reduce((sum, entry) => sum + entry.pet, 0)
@@ -75,6 +76,13 @@ function useStoreValue(configured: boolean) {
   })
   const currentUser = team.find(user => user.id === snapshot?.userId) ?? anonymous
   const profile = snapshot?.profiles.find(user => user.id === snapshot.userId)
+  const { theme, toggleTheme } = useThemePreference({
+    userId: snapshot?.userId,
+    savedTheme: profile?.theme ?? 'light',
+    save: async value => { unwrap(await actions.setTheme(value)) },
+    refresh,
+    onError: () => setError('A téma mentése nem sikerült. Próbáld újra.'),
+  })
   const entries = snapshot?.entries ?? []
   const activeEntries = entries.filter(entry => !entry.returnEventId)
   return {
@@ -82,7 +90,7 @@ function useStoreValue(configured: boolean) {
     isAuthenticated: Boolean(snapshot), isAdmin: Boolean(currentUser.isAdmin), isLoading,
     error: configured ? error : "A bejelentkezés még nincs beállítva.",
     refresh,
-    nickname: profile?.nickname ?? '', theme: profile?.theme ?? 'light',
+    nickname: profile?.nickname ?? '', theme, toggleTheme,
     totals: totalsFor(activeEntries), allTotals: totalsFor(entries),
     resolveUser: (id: string) => team.find(user => user.id === id) ?? { ...anonymous, id },
     signInWithGoogle: async () => {
@@ -99,10 +107,6 @@ function useStoreValue(configured: boolean) {
     updateEntry: async (id: string, input: EntryInput, expectedRevision: number) => { unwrap(await actions.updateEntry(id, input, expectedRevision)); await refresh() },
     deleteEntry: async (id: string) => { unwrap(await actions.deleteEntry(id)); await refresh() },
     setNickname: async (value: string) => { unwrap(await actions.setNickname(value)); await refresh() },
-    setTheme: async (value: Theme) => {
-      try { unwrap(await actions.setTheme(value)); await refresh() }
-      catch { setError("A téma mentése nem sikerült.") }
-    },
     grantAdmin: async (id: string) => { unwrap(await actions.grantAdmin(id)); await refresh() },
     revokeAdmin: async (id: string) => { unwrap(await actions.revokeAdmin(id)); await refresh() },
     markAllReturned: async () => { const result = unwrap(await actions.markAllReturned()); await refresh(); return result },

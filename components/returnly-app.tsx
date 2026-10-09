@@ -26,18 +26,15 @@ function AppInner() {
     refresh,
     signInWithGoogle,
     signOut,
-    setTheme,
+    toggleTheme,
     theme,
     updateEntry,
   } = useStore()
   const [tab, setTab] = useState<Tab>('home')
-  const [darkMode, setDarkMode] = useState(false)
+  const darkMode = theme === 'dark'
   const [sheet, setSheet] = useState<SheetState | null>(null)
   const [toast, setToast] = useState<ToastData | null>(null)
   const savingEntry = useRef(false)
-  useEffect(() => {
-    setDarkMode(theme === 'dark')
-  }, [theme])
   useEffect(() => {
     const root = document.documentElement
     root.classList.toggle('dark', darkMode)
@@ -105,9 +102,7 @@ function AppInner() {
           onProfile={() => setTab('profile')}
           onHome={() => setTab('home')}
           darkMode={darkMode}
-          onToggleDarkMode={() => {
-            void setTheme(darkMode ? 'light' : 'dark')
-          }}
+          onToggleDarkMode={toggleTheme}
         />
       )}
       {tab === 'profile' && (
@@ -117,9 +112,7 @@ function AppInner() {
           onRestoreReturn={handleRestoreReturn}
           onHome={() => setTab('home')}
           darkMode={darkMode}
-          onToggleDarkMode={() => {
-            void setTheme(darkMode ? 'light' : 'dark')
-          }}
+          onToggleDarkMode={toggleTheme}
         />
       )}
 
